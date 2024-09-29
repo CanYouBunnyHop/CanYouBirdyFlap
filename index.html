@@ -57,8 +57,6 @@
             document.getElementById('high-score').value = value;
         }
     }
-
-    const physicsTimeInterval = 1;
     var fallTime = 0;
     var flapTime = 0;
     var gravity = 9;
@@ -68,36 +66,13 @@
 
     const pipeWidth = 40
     const pipeSpacing = 110
-    const pipeGapSize = 120
+    const pipeGapSize = 100
     const pipeCountWithCollision = 6
 
-    var scrollSpeed = 10
+    var scrollSpeed = 8
     var scrollPos = 0
 
     const bird = game.querySelector('#bird');
-
-    //Drawing using canvans
-    // const birdSize = 150
-    // function drawBirdCollider(){
-    //     const ctx = bird.getContext('2d');
-    //     const offsetX = bird.width/2;
-    //     const offsetY = bird.height/2;
-    //     const points = [[-1, -.25],[-.75, -.5],[.75,-.5],[1,-.25],
-    //                     [1,.25],[.75,.5],[-.75,.5],[-1,.25]];
-    //     ctx.beginPath();
-    //     ctx.moveTo(points[0][0]*birdSize + offsetX, points[0][1]*birdSize + offsetY);
-    //     for (var i = 1; i < points.length; i++) {
-    //         ctx.lineTo(points[i][0]*birdSize + offsetX, points[i][1]*birdSize + offsetY);
-    //     }
-    //     ctx.closePath();
-    //     ctx.lineWidth = 15;
-    //     ctx.stroke();
-
-    //     // Optional: Fill the polygon
-    //     //ctx.fillStyle = 'orange';
-    //     //ctx.fill();
-    // }
-    // drawBirdCollider();
     const scrollParent = game.querySelector('.horizontal-flex');
     //define globalThis property getter, this seem to be the most elegant way of doing it 
     Object.defineProperty(globalThis, "scrollItems",{
@@ -258,10 +233,9 @@
                     new Pipe();//create new pipe and spacing
                 }
                 //Physics Stuff
-                const delta = physicsTimeInterval/10;
-                fallTime += delta;
-                flapTime -= delta;
-                scrollPos -= delta * scrollSpeed;
+                fallTime += deltaTime * 10;
+                flapTime -= deltaTime * 10;
+                scrollPos -= deltaTime * scrollSpeed * 10;
                 scrollParent.style.transform = `translateX(${scrollPos}px)`;
                 bird.style.transform = `translateY(${curYVelocity()}px)`;
                 
@@ -280,8 +254,8 @@
             },
             function(event){//onClick
                 //-1 here so bird doesnt feel too heavy, bird will be floatier the lowers the fall time goes
-                fallTime = -1; 
-                flapTime = 0.3;
+                fallTime = -1.4; 
+                flapTime = 0.5;
             }),
         gameOver : new BaseGameState(
             function(){//Enter
@@ -324,10 +298,15 @@
         startingSpace.style.width = `${startingSpaceWidth}%`;
     }
     gameStateMachine.currentState = gameState.clickStart;
-    function process(){
+    var now, deltaTime, last = Date.now();
+    function process() {
+        now = Date.now();
+        deltaTime  = (now - last) / 1000;    // duration in seconds
         gameStateMachine.currentState.duringState();
+        last = now;
+        requestAnimationFrame(process); // recursion
     }
-    setInterval(process, physicsTimeInterval);
+    requestAnimationFrame(process);
 </script>
 <style>
     #game{
