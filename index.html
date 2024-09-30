@@ -183,7 +183,7 @@
     function applyForcesToBird(){
         let flapAccel = -flapStrength*clamp(0,1,flapTime);
         let accel = (gravity*(fallTime / 10)) + flapAccel;//gravity + flap
-        let result = clamp(-10, game.getBoundingClientRect().bottom , prevYVel+accel);//clamp result so bird stays inside
+        let result = clamp(-10, game.getBoundingClientRect().bottom + window.scrollY , prevYVel+accel);//clamp result so bird stays inside
         prevYVel = result;
         bird.style.transform = `translateY(${result}px)`;
     }
