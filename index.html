@@ -4,16 +4,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Document</title>
+<title>🪽FLAPPY BIRD🐦</title>
 </head>
-
-<body>
-    <!--bird y vel<input type="text" id="bird-y">
-    <br>
-    fall time <input type="text" id="fall-time"> pipe rect X <input type="text" id="pipe-x">
-    -->
-    Score:<input type="text" id="score"> HighScore: <input type="text" id="high-score">
-    <div id="game" onmousedown="gameStateMachine.currentState.onClick(event)">
+<body style="display: grid; place-items: center;">
+    <span class="scoreboard">
+        <span class="score-item">Score:</span><input type="text"id="score" style='width:33%'>
+        <span class="score-item">HighScore:</span><input type="text"id="high-score" style='width:33%'>
+    </span>
+    <div id="game" onmousedown="gameStateMachine.currentState.onClick(event)" style="outline:blue 2px solid;">
         <span class ="overlay" id="menu" style="z-index: 5;">
             CLICK TO START
         </span>
@@ -31,15 +29,29 @@
 </body>
 
 <script type="text/javascript">
-    const gameHeight = 400
+    //
+    //GAME SETTINGS
+    //
+    const gameHeight = 620; //320x640 is mobile size -20 for scoreboard
+    const flapStrength = 86;
+    const flapFloatiness = 0.1; //Anti Gravity after flap
+    const flapDuration = 0.6; //How long to apply flapStrength for
+    const gravity = 12;
+    const pipeWidth = 65;
+    const pipeSpacing = 160;
+    const pipeGapSize = 155;
+    const pipeCreateCount = 4;
+    const pipeCountWithCollision = 3;
+    const scrollSpeed = 6.6;
+    const startingSpaceWidth = 106; //in percentage
+    const menuDelayTime = 1.2; //in seconds
+    //
+    //ELEMENT REFERENCES AND OBJECT PROTOTYPES
+    //
     const game = document.getElementById('game');
-    const gameOffset = game.getBoundingClientRect();
     game.style.height = `${gameHeight}px`
-
+    const gameRect = game.getBoundingClientRect();
     const menu = game.querySelector('#menu');
-    function setMenuText(text=''){
-        menu.innerHTML = text;
-    }
     const score = {
         _score: 0,
         get score(){
@@ -57,24 +69,9 @@
             document.getElementById('high-score').value = value;
         }
     }
-    var fallTime = 0;
-    var flapTime = 0;
-    var gravity = 8.5;
-    var prevYVel = 0;
-    var flapAccel = 0;
-    var flapStrength = 40;
-
-    const pipeWidth = 40
-    const pipeSpacing = 110
-    const pipeGapSize = 102
-    const pipeCountWithCollision = 6
-
-    var scrollSpeed = 7
-    var scrollPos = 0
-
     const bird = game.querySelector('#bird');
     const scrollParent = game.querySelector('.horizontal-flex');
-    //define globalThis property getter, this seem to be the most elegant way of doing it 
+    //Define global property with getters
     Object.defineProperty(globalThis, "scrollItems",{
         get(){//spread operator converts HTMLCollection to array, so array.slice() can be used
             return [...scrollParent.children].slice(3);//0=starting space, 1=pipe, 2=space
@@ -85,15 +82,11 @@
             return scrollItems.filter((el, index) => index%2===0);
         }
     });
-
-    const startingSpaceWidth = 50
     const startingSpace = scrollParent.querySelector('#starting-space');
     startingSpace.style.minWidth = `${startingSpaceWidth}%`;
-
     const protoPipe = scrollParent.querySelector('.vertical-flex.prototype');
-    protoPipe.style.minWidth = `${pipeWidth}px`; //set width
+    protoPipe.style.minWidth = `${pipeWidth}px`;
     const protoSpacing = scrollParent.querySelector('.spacing.prototype');
-
     //Prototype of state and statemachine
     const baseState = {
         enterState : ()=>{},
@@ -118,34 +111,11 @@
             this._state = targetState;
         }
     };
-    function AABBCollision(a, b=bird, exitCallBack=()=>{}){
-        let rectA = a.getBoundingClientRect();
-        let rectB = b.getBoundingClientRect();
-        let xOverlap = (rectA.right >= rectB.left) && (rectA.left <= rectB.right);
-        let yOverlap = (rectA.bottom >= rectB.top) && (rectA.top <= rectB.bottom);
-        if(xOverlap && yOverlap){
-            a.wasColliding = true
-            return true;
-        }
-        if(a.wasColliding){
-            exitCallBack();
-            a.wasColliding = false;
-            return false;
-        }
-        return (xOverlap && yOverlap);
-    }
     const pipe = {
         top : protoPipe.querySelector('.pipe.top'),
         gap : protoPipe.querySelector('.pipe.gap'),
         bot : protoPipe.querySelector('.pipe.bot'),
     };
-    function pipeElToObj(_pipe = pipe){
-        return {
-            top : _pipe.querySelector('.pipe.top'),
-            gap : _pipe.querySelector('.pipe.gap'),
-            bot : _pipe.querySelector('.pipe.bot'),
-        }
-    }
     function Pipe(){//pipe constructor
         let pipeClone = protoPipe.cloneNode(true); //true for deep, cloning the rest of object
         pipeClone.classList.remove('prototype'); //removes prototype class
@@ -163,6 +133,36 @@
         scrollParent.appendChild(createSpacing());
         return pipeClone;
     }
+    //
+    //REUSEABLE FUNCTIONS / UTIL
+    //
+    function clamp(min, max, ref){return Math.max(Math.min(ref, max), min);} 
+    function AABBCollision(a, b=bird, exitCallBack=()=>{}){
+        let rectA = a.getBoundingClientRect();
+        let rectB = b.getBoundingClientRect();
+        let xOverlap = (rectA.right >= rectB.left) && (rectA.left <= rectB.right);
+        let yOverlap = (rectA.bottom >= rectB.top) && (rectA.top <= rectB.bottom);
+        if(xOverlap && yOverlap){
+            a.wasColliding = true
+            return true;
+        }
+        if(a.wasColliding){
+            exitCallBack();
+            a.wasColliding = false;
+            return false;
+        }
+        return (xOverlap && yOverlap);
+    }
+    //
+    //GAMEPLAY FUNCTIONS
+    //
+    function pipeElToObj(_pipe = pipe){//Convert Element to pipe Object
+        return {
+            top : _pipe.querySelector('.pipe.top'),
+            gap : _pipe.querySelector('.pipe.gap'),
+            bot : _pipe.querySelector('.pipe.bot'),
+        }
+    }
     function createSpacing(){
         let spaceClone = protoSpacing.cloneNode(false);
         spaceClone.classList.remove('prototype'); 
@@ -170,27 +170,37 @@
         spaceClone.style.display = 'block';
         return spaceClone;
     }
-    function createPipes(pipeCount = 20)
-    {
+    function createPipes(pipeCount = pipeCreateCount){
         for(let i=0; i<pipeCount; i++){//create pipes
             new Pipe();
         }
     }
     function removeFirstScrollItem(){
-        var w = scrollItems[0].offsetWidth + startingSpace.offsetWidth;
+        let w = scrollItems[0].offsetWidth + startingSpace.offsetWidth;
         startingSpace.style.minWidth = `${w}px`; //adding width to empty space, next item wont snap to the left
         scrollItems[0].remove();
     }
-    function clamp(min, max, ref){
-        return Math.max(Math.min(ref, max), min);
-    }
-    var curYVelocity = () => {
+    let fallTime = 0, flapTime = 0, prevYVel = 0, scrollPos = 0; //scroll pos used in game play state update loop
+    function applyForcesToBird(){
         let flapAccel = -flapStrength*clamp(0,1,flapTime);
         let accel = (gravity*(fallTime / 10)) + flapAccel;//gravity + flap
         let result = clamp(-10, gameHeight, prevYVel+accel);//clamp result so bird stays inside
         prevYVel = result;
-        return result;
+        bird.style.transform = `translateY(${result}px)`;
     }
+    function resetGame(){
+        //Use element.Remove() to clear pipes and spaces
+        scrollItems.forEach((el) => el.remove());
+        createPipes(); //create pipe elements
+        bird.style.transform = 'translateY(0px)'; //reset bird
+        prevYVel = 0; fallTime = 0; flapTime = 0; scrollPos = 0;
+        score.score = 0;
+        startingSpace.style.minWidth = `${startingSpaceWidth}%`;
+        startingSpace.style.width = `${startingSpaceWidth}%`;
+    }
+    //
+    //STATEMACHINE AND GAMELOOP
+    //
     const baseGameState = {
         __proto__ : baseState, //inherit base state object
         onClick : (event)=>{},
@@ -212,10 +222,8 @@
                 menu.style.visibility = 'visible';
                 document.getElementById('high-score').value = score.highScore;
             },
-            function(){//During
-            }, 
-            function(){//Exit
-            },
+            function(){},//During
+            function(){},//Exit
             function(event){//onClick
                 gameStateMachine.currentState = gameState.play;
             }),
@@ -227,7 +235,7 @@
             },
             function(){//During
                 //When pipe scroll past viewport
-                if(scrollItems[0].getBoundingClientRect().right < -0){
+                if(scrollItems[0].getBoundingClientRect().right < gameRect.left){
                     removeFirstScrollItem();//remove pipe
                     removeFirstScrollItem();//remove spacing
                     new Pipe();//create new pipe and spacing
@@ -237,10 +245,10 @@
                 flapTime -= deltaTime * 10;
                 scrollPos -= deltaTime * scrollSpeed * 10;
                 scrollParent.style.transform = `translateX(${scrollPos}px)`;
-                bird.style.transform = `translateY(${curYVelocity()}px)`;
+                applyForcesToBird();
                 
                 //Define how to enter gameover
-                let gameBirdYPos = curYVelocity();
+                let birdRect = bird.getBoundingClientRect()
                 for(let i = 0; i < pipeCountWithCollision; i++){
                     let p = pipeElToObj(scrollItemPipes[i]);
                     if(AABBCollision(p.top)||AABBCollision(p.bot)){
@@ -248,14 +256,13 @@
                     }
                     AABBCollision(p.gap, bird, function(){score.score++;});
                 }
-                if(gameBirdYPos >= gameHeight-10){gameStateMachine.currentState = gameState.gameOver;} //bird hits the ground
+                if(birdRect.top+10> gameRect.bottom){gameStateMachine.currentState = gameState.gameOver;}//bird hits the ground
             }, 
-            function(){//Exit
-            },
+            function(){},//Exit
             function(event){//onClick
-                //-1 here so bird doesnt feel too heavy, bird will be floatier the lowers the fall time goes
-                fallTime = -1.4; 
-                flapTime = 0.5;
+                //using negative here so bird doesnt feel too heavy, bird will be floatier the lowers the falltime goes
+                fallTime = 0-flapFloatiness; 
+                flapTime = flapDuration;
             }),
         gameOver : new BaseGameState(
             function(){//Enter
@@ -270,54 +277,51 @@
                 setTimeout(function(){
                     game.style.pointerEvents='auto';
                     menu.innerHTML += '<br>CLICK TO PLAY AGAIN';
-                }, 1500);
+                }, menuDelayTime*1000);
             },
-            function(){//During
-            }, 
-            function(){//Exit
-            },
+            function(){},//During
+            function(){},//Exit
             function(event){//onClick
                 gameStateMachine.currentState = gameState.play
             }),
     };
-    function resetGame(){
-        while(scrollItems.length){ //clear all pipes
-            scrollItems[0].remove();
-        }
-        createPipes(); //create pipe elements
-        bird.style.transform = 'translateY(0px)'; //reset bird
-        prevYVel = 0;
-        fallTime = 0;
-        flapTime = 0;
-        flapAccel = 0;
-        score.score = 0; //reset score
-        //reset scroll position
-        scrollPos = 0;
-        //reset starting space width
-        startingSpace.style.minWidth = `${startingSpaceWidth}%`;
-        startingSpace.style.width = `${startingSpaceWidth}%`;
-    }
     gameStateMachine.currentState = gameState.clickStart;
     var now, deltaTime, last = Date.now();
-    function process() {
+    function process(){
         now = Date.now();
-        deltaTime  = (now - last) / 1000;    // duration in seconds
+        deltaTime  = (now - last) / 1000; // duration in seconds
         gameStateMachine.currentState.duringState();
         last = now;
         requestAnimationFrame(process); // recursion
     }
-    requestAnimationFrame(process);
+    requestAnimationFrame(process); //called once, starts the game loop
 </script>
 <style>
+    .scoreboard{
+        display: flex;
+        flex-wrap: nowrap;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 5px;
+    }
+    .scoreboard .score-item{
+        text-align: center;
+        margin-right: 2%;
+    }
+    .scoreboard input{
+        flex: 0.2;
+        margin-right: 5%;
+    }
     #game{
-        width: 100%;
-        height: 0px;
+        position: relative;
+        width: 320px;
+        /*height: 640px; SETTING WITH JS*/
         background-color: skyblue !important;
         user-select: none;
         padding: 0%;
         margin: 0%;
         display: block;
-        overflow: hidden; /*testing*/
+        overflow: hidden; /*TEST*/
     }
     #game .overlay{
         position: absolute;
@@ -325,12 +329,12 @@
         justify-content: center;
         align-items: center;
         text-align: center;
-        width: 100%;
-        height: 400px;
+        width: 320px;
+        height: 100%;
         background-color: rgba(0, 0, 0, 0.395);
         color: azure;
     }
-    #game .prototype{ /*for js cloning obj*/
+    #game .prototype{ /*FOR CLONING IN JS*/
        display: none !important;
     }
     #game #bird-wrapper{
@@ -342,21 +346,16 @@
         color: wheat;
         position: absolute;
         background-color: orange !important;
-        
         padding: 0px !important;
-        height: 30px;
-        width: 40px;
+        height: 40px;
+        width: 50px;
         clip-path: ellipse();
         overflow: visible;
-
         display: block;
-        line-height: 30px;
         justify-content: center;
         align-items: center;
         text-align: center;
-        
         visibility: hidden;
-        outline: rgb(228, 31, 9) 2px solid;
     }
     #game .horizontal-flex{
         position: relative;
@@ -365,9 +364,7 @@
         align-self: center;
         display: flex;
         flex-direction: row;
-
-        /*outline: rgb(35, 10, 7) 2px solid;*/
-        /*animation: scroll 9s infinite linear;*/
+        /*outline: rgb(35, 10, 7) 2px solid; DEBUG*/
     }
     #game .vertical-flex{ /*pipe's container*/
         position: relative;
@@ -378,25 +375,19 @@
     #game .pipe{
         position: relative;
         background-color: green;
-        /*outline: salmon 2px solid; testing*/
+        /*outline: salmon 2px solid; DEBUG*/
     }
-    #game .pipe.top{
-        flex: 0.5;
-    }
-    #game .pipe.bot{
-        flex: 0.5;
-    }
+    /*SETTING WITH JS 
+    #game .pipe.top{flex: 0.5;}
+    #game .pipe.bot{flex: 0.5;} 
+    */
     #game .pipe.gap{ /*Pipe gaps*/
         visibility: hidden;
-        flex-basis: 100px;
+        /*flex-basis: 100px; SETTING WITH JS*/
     }
     #game .spacing{ /*Game gaps*/
         min-width: 40px;
-        /*outline: rgb(234, 250, 114) 2px solid;*/
+        /*outline: rgb(234, 250, 114) 2px solid; DEBUG*/
     }
-    /*@keyframes scroll{ //test anim
-        0%{left:100%}
-        100%{left:-10%}
-    }*/
 </style>
 </html>
