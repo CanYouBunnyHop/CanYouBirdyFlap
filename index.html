@@ -184,7 +184,7 @@
     function applyForcesToBird(){
         let flapAccel = -flapStrength*clamp(0,1,flapTime);
         let accel = (gravity*(fallTime / 10)) + flapAccel;//gravity + flap
-        let result = clamp(-10, gameHeight, prevYVel+accel);//clamp result so bird stays inside
+        let result = clamp(-10, gameRect.bottom , prevYVel+accel);//clamp result so bird stays inside
         prevYVel = result;
         bird.style.transform = `translateY(${result}px)`;
     }
@@ -256,7 +256,7 @@
                     }
                     AABBCollision(p.gap, bird, function(){score.score++;});
                 }
-                if(birdRect.top+10> gameRect.bottom){gameStateMachine.currentState = gameState.gameOver;}//bird hits the ground
+                if(birdRect.top >= gameRect.bottom){gameStateMachine.currentState = gameState.gameOver;}//bird hits the ground
             }, 
             function(){},//Exit
             function(event){//onClick
