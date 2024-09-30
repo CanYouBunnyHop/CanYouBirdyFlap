@@ -11,17 +11,17 @@
         <span class="score-item">Score:</span><input type="text"id="score" style='width:33%'>
         <span class="score-item">HighScore:</span><input type="text"id="high-score" style='width:33%'>
     </span>
-    <div id="game" onmousedown="gameStateMachine.currentState.onClick(event)" style="outline:blue 2px solid;">
+    <div id="game" onmousedown="gameStateMachine.currentState.onClick(event)" style="outline:darkblue 3px solid;">
         <span class ="overlay" id="menu" style="z-index: 5;">
             CLICK TO START
         </span>
-        <span id="bird-wrapper"><span id="bird"style="z-index:3;"></span></span>
+        <span id="bird-wrapper"><span id="bird"></span></span>
         <span class="horizontal-flex">
             <span style="visibility: hidden;" id="starting-space"></span>
             <span class="vertical-flex prototype">
-                <canvas class="pipe top"></canvas>
-                <canvas class="pipe gap"></canvas>
-                <canvas class="pipe bot"></canvas>
+                <span class="pipe top"></span>
+                <span class="pipe gap" style="visibility: hidden;"></span>
+                <span class="pipe bot"></span>
             </span>
             <span class="spacing prototype"></span>
         </span>
@@ -43,14 +43,13 @@
     const pipeCreateCount = 4;
     const pipeCountWithCollision = 3;
     const scrollSpeed = 6.6;
-    const startingSpaceWidth = 106; //in percentage
+    const startingSpaceWidth = 100; //in percentage
     const menuDelayTime = 1.2; //in seconds
     //
     //ELEMENT REFERENCES AND OBJECT PROTOTYPES
     //
     const game = document.getElementById('game');
     game.style.height = `${gameHeight}px`
-    const gameRect = game.getBoundingClientRect();
     const menu = game.querySelector('#menu');
     const score = {
         _score: 0,
@@ -184,7 +183,7 @@
     function applyForcesToBird(){
         let flapAccel = -flapStrength*clamp(0,1,flapTime);
         let accel = (gravity*(fallTime / 10)) + flapAccel;//gravity + flap
-        let result = clamp(-10, gameRect.bottom , prevYVel+accel);//clamp result so bird stays inside
+        let result = clamp(-10, game.getBoundingClientRect().bottom , prevYVel+accel);//clamp result so bird stays inside
         prevYVel = result;
         bird.style.transform = `translateY(${result}px)`;
     }
@@ -235,7 +234,7 @@
             },
             function(){//During
                 //When pipe scroll past viewport
-                if(scrollItems[0].getBoundingClientRect().right < gameRect.left){
+                if(scrollItems[0].getBoundingClientRect().right < game.getBoundingClientRect().left){
                     removeFirstScrollItem();//remove pipe
                     removeFirstScrollItem();//remove spacing
                     new Pipe();//create new pipe and spacing
@@ -256,7 +255,7 @@
                     }
                     AABBCollision(p.gap, bird, function(){score.score++;});
                 }
-                if(birdRect.top >= gameRect.bottom){gameStateMachine.currentState = gameState.gameOver;}//bird hits the ground
+                if(birdRect.top >= game.getBoundingClientRect().bottom){gameStateMachine.currentState = gameState.gameOver;}//bird hits the ground
             }, 
             function(){},//Exit
             function(event){//onClick
@@ -297,6 +296,10 @@
     requestAnimationFrame(process); //called once, starts the game loop
 </script>
 <style>
+    :root{/*dark theme*/
+        background-color: rgb(42, 42, 42);
+        color: azure;
+    }
     .scoreboard{
         display: flex;
         flex-wrap: nowrap;
@@ -343,19 +346,19 @@
         display: block;
     }
     #game #bird{
-        color: wheat;
         position: absolute;
         background-color: orange !important;
         padding: 0px !important;
         height: 40px;
         width: 50px;
-        clip-path: ellipse();
+        border-radius: 60%;
         overflow: visible;
         display: block;
         justify-content: center;
         align-items: center;
         text-align: center;
-        visibility: hidden;
+        visibility: hidden; /*set visible in JS*/
+        outline: black 4px solid;
     }
     #game .horizontal-flex{
         position: relative;
@@ -372,19 +375,19 @@
         display: flex;
         flex-direction: column;
     }
-    #game .pipe{
+    #game .pipe:not(.gap){
         position: relative;
         background-color: green;
-        /*outline: salmon 2px solid; DEBUG*/
+        outline: black 4px solid; /*DEBUG*/
     }
     /*SETTING WITH JS 
     #game .pipe.top{flex: 0.5;}
     #game .pipe.bot{flex: 0.5;} 
     */
-    #game .pipe.gap{ /*Pipe gaps*/
+    /*#game .pipe.gap{ /*Pipe gaps
         visibility: hidden;
-        /*flex-basis: 100px; SETTING WITH JS*/
-    }
+        /*flex-basis: 100px; SETTING WITH JS
+    }*/
     #game .spacing{ /*Game gaps*/
         min-width: 40px;
         /*outline: rgb(234, 250, 114) 2px solid; DEBUG*/
