@@ -33,17 +33,18 @@
     //GAME SETTINGS
     //
     const gameHeight = 580; //320x640 is mobile size -20 for scoreboard
-    const flapStrength = 86;
-    const flapFloatiness = 0.1; //Anti Gravity after flap
+    const flapStrength = 80;
+    const flapFloatiness = 1.5; //Anti Gravity after flap
     const flapDuration = 0.6; //How long to apply flapStrength for
     const gravity = 12;
     const pipeWidth = 65;
     const pipeSpacing = 160;
-    const pipeGapSize = 155;
+    const pipeGapSize = 154;
+    const pipeMinFlexBasis = 0.08;
     const pipeCreateCount = 4;
     const pipeCountWithCollision = 3;
-    const scrollSpeed = 6.6;
-    const startingSpaceWidth = 100; //in percentage
+    const scrollSpeed = 10;
+    const startingSpaceWidth = 105; //in percentage
     const menuDelayTime = 1.2; //in seconds
     //
     //ELEMENT REFERENCES AND OBJECT PROTOTYPES
@@ -78,7 +79,7 @@
     });
     Object.defineProperty(globalThis, "scrollItemPipes",{
         get(){
-            return scrollItems.filter((el, index) => index%2===0);
+            return scrollItems.filter((el, index) => index%2===0); //return every even index in scroll Items
         }
     });
     const startingSpace = scrollParent.querySelector('#starting-space');
@@ -115,21 +116,18 @@
         gap : protoPipe.querySelector('.pipe.gap'),
         bot : protoPipe.querySelector('.pipe.bot'),
     };
-    function Pipe(){//pipe constructor
+    function Pipe(gapSize = pipeGapSize,  gapPosition = clamp(pipeMinFlexBasis, 1-pipeMinFlexBasis, Math.random())){//pipe constructor
         let pipeClone = protoPipe.cloneNode(true); //true for deep, cloning the rest of object
         pipeClone.classList.remove('prototype'); //removes prototype class
         this.top = pipeClone.querySelector('.pipe.top');
         this.gap = pipeClone.querySelector('.pipe.gap');
         this.bot = pipeClone.querySelector('.pipe.bot');
         //randomise gap position by setting flex for top and bot
-        this.gap.style.flexBasis = `${pipeGapSize}px`;
-        let r =  Math.random();
-        this.top.style.flex = r;
-        this.bot.style.flex = 1-r;
-        //create element
-        pipeClone.style.display = "flex"; //unhides, default is vertical flex
-        scrollParent.appendChild(pipeClone);
-        scrollParent.appendChild(createSpacing());
+        this.gap.style.flexBasis = `${gapSize}px`;
+        this.top.style.flex = gapPosition;
+        this.bot.style.flex = 1-gapPosition;
+        //unhides, default is vertical flex
+        pipeClone.style.display = "flex"; 
         return pipeClone;
     }
     //
@@ -150,7 +148,7 @@
             a.wasColliding = false;
             return false;
         }
-        return (xOverlap && yOverlap);
+        return (xOverlap && yOverlap);//fall back
     }
     //
     //GAMEPLAY FUNCTIONS
@@ -164,20 +162,23 @@
     }
     function createSpacing(){
         let spaceClone = protoSpacing.cloneNode(false);
-        spaceClone.classList.remove('prototype'); 
+        spaceClone.classList.remove('prototype'); //remove prototype class
         spaceClone.style.minWidth = `${pipeSpacing}px`;
         spaceClone.style.display = 'block';
         return spaceClone;
     }
-    function createPipes(pipeCount = pipeCreateCount){
+    function createPipesWithSpacing(pipeCount = pipeCreateCount){
         for(let i=0; i<pipeCount; i++){//create pipes
-            new Pipe();
+            scrollParent.appendChild(new Pipe());
+            scrollParent.appendChild(createSpacing());
         }
     }
-    function removeFirstScrollItem(){
+    function dequeueScrollItem(){
+        let result = scrollItems[0];
         let w = scrollItems[0].offsetWidth + startingSpace.offsetWidth;
         startingSpace.style.minWidth = `${w}px`; //adding width to empty space, next item wont snap to the left
         scrollItems[0].remove();
+        return result;
     }
     let fallTime = 0, flapTime = 0, prevYVel = 0, scrollPos = 0; //scroll pos used in game play state update loop
     function applyForcesToBird(){
@@ -190,12 +191,15 @@
     function resetGame(){
         //Use element.Remove() to clear pipes and spaces
         scrollItems.forEach((el) => el.remove());
-        createPipes(); //create pipe elements
         bird.style.transform = 'translateY(0px)'; //reset bird
-        prevYVel = 0; fallTime = 0; flapTime = 0; scrollPos = 0;
         score.score = 0;
-        startingSpace.style.minWidth = `${startingSpaceWidth}%`;
+        prevYVel = 0; fallTime = 0; flapTime = 0;
+        //reset scroll parent
+        scrollPos = 0;
+        scrollParent.style.transform = `translateX(${scrollPos}px)`;//reset here or else first pipe gets deleted
         startingSpace.style.width = `${startingSpaceWidth}%`;
+        startingSpace.style.minWidth = `${startingSpaceWidth}%`;
+        createPipesWithSpacing();//create pipe elements
     }
     //
     //STATEMACHINE AND GAMELOOP
@@ -216,28 +220,28 @@
     };
     const gameState = {
         clickStart : new BaseGameState(
-            function(){//Enter
+            function enter(){
                 menu.innerHTML = 'CLICK TO START';
                 menu.style.visibility = 'visible';
                 document.getElementById('high-score').value = score.highScore;
             },
-            function(){},//During
-            function(){},//Exit
-            function(event){//onClick
+            function during(){}, function exit(){},
+            function onClick(event){
                 gameStateMachine.currentState = gameState.play;
             }),
         play : new BaseGameState(
-            function(){//Enter
+            function enter(){
                 menu.style.visibility = 'hidden';
                 bird.style.visibility = 'visible';
                 resetGame();
             },
-            function(){//During
+            function during(){
                 //When pipe scroll past viewport
                 if(scrollItems[0].getBoundingClientRect().right < game.getBoundingClientRect().left){
-                    removeFirstScrollItem();//remove pipe
-                    removeFirstScrollItem();//remove spacing
-                    new Pipe();//create new pipe and spacing
+                    dequeueScrollItem();//remove pipe
+                    dequeueScrollItem();//remove spacing
+                    //create new pipe and spacing
+                    createPipesWithSpacing(1);
                 }
                 //Physics Stuff
                 fallTime += deltaTime * 10;
@@ -245,7 +249,6 @@
                 scrollPos -= deltaTime * scrollSpeed * 10;
                 scrollParent.style.transform = `translateX(${scrollPos}px)`;
                 applyForcesToBird();
-                
                 //Define how to enter gameover
                 let birdRect = bird.getBoundingClientRect()
                 for(let i = 0; i < pipeCountWithCollision; i++){
@@ -257,14 +260,14 @@
                 }
                 if(birdRect.top >= game.getBoundingClientRect().bottom){gameStateMachine.currentState = gameState.gameOver;}//bird hits the ground
             }, 
-            function(){},//Exit
-            function(event){//onClick
+            function exit(){},
+            function onClick(event){
                 //using negative here so bird doesnt feel too heavy, bird will be floatier the lowers the falltime goes
                 fallTime = 0-flapFloatiness; 
                 flapTime = flapDuration;
             }),
         gameOver : new BaseGameState(
-            function(){//Enter
+            function enter(){
                 game.style.pointerEvents = 'none';
                 //update highscore
                 if(score.score > score.highScore){
@@ -272,15 +275,13 @@
                 }
                 menu.innerHTML =`SCORE : ${score.score} <br>HIGHSCORE : ${score.highScore}`;
                 menu.style.visibility = 'visible';
-                
                 setTimeout(function(){
                     game.style.pointerEvents='auto';
                     menu.innerHTML += '<br>CLICK TO PLAY AGAIN';
                 }, menuDelayTime*1000);
             },
-            function(){},//During
-            function(){},//Exit
-            function(event){//onClick
+            function during(){}, function exit(){},
+            function onClick(event){
                 gameStateMachine.currentState = gameState.play
             }),
     };
@@ -324,7 +325,7 @@
         padding: 0%;
         margin: 0%;
         display: block;
-        overflow: hidden; /*TEST*/
+        overflow: hidden; /*overflow: hidden; TEST*/
     }
     #game .overlay{
         position: absolute;
