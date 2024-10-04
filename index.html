@@ -87,30 +87,7 @@
     const protoPipe = scrollParent.querySelector('.vertical-flex.prototype');
     protoPipe.style.minWidth = `${pipeWidth}px`;
     const protoSpacing = scrollParent.querySelector('.spacing.prototype');
-    //Prototype of state and statemachine
-    const baseState = {
-        enterState : ()=>{},
-        duringState : ()=>{},
-        exitState : ()=>{},
-    }
-    function BaseState(enterState=()=>{} , duringState=()=>{}, exitState=()=>{}){
-        this.enterState = enterState;
-        this.duringState = duringState;
-        this.exitState = exitState;
-    }
-    const baseStateMachine ={
-        _state: Object.create(baseState),
-        get currentState(){
-            return this._state;
-        },
-        set currentState(targetState){
-            if(this._state === targetState) return; //return if targetState is exactly the same 
-            let curState = this._state;
-            curState.exitState();
-            targetState.enterState();
-            this._state = targetState;
-        }
-    };
+    
     const pipe = {
         top : protoPipe.querySelector('.pipe.top'),
         gap : protoPipe.querySelector('.pipe.gap'),
@@ -150,6 +127,32 @@
         }
         return (xOverlap && yOverlap);//fall back
     }
+    //
+    //Prototype of state and statemachine
+    //
+    const baseState = {
+        enterState : ()=>{},
+        duringState : ()=>{},
+        exitState : ()=>{},
+    }
+    function BaseState(enterState=()=>{} , duringState=()=>{}, exitState=()=>{}){
+        this.enterState = enterState;
+        this.duringState = duringState;
+        this.exitState = exitState;
+    }
+    const baseStateMachine ={
+        _state: Object.create(baseState),
+        get currentState(){
+            return this._state;
+        },
+        set currentState(targetState){
+            if(this._state === targetState) return; //return if targetState is exactly the same 
+            let curState = this._state;
+            curState.exitState();
+            targetState.enterState();
+            this._state = targetState;
+        }
+    };
     //
     //GAMEPLAY FUNCTIONS
     //
@@ -205,9 +208,10 @@
     //STATEMACHINE AND GAMELOOP
     //
     const baseGameState = {
-        __proto__ : baseState, //inherit base state object
+        //__proto__ : baseState, //inherit base state object
         onClick : (event)=>{},
     };
+    Object.setPrototypeOf(baseGameState, baseState);
     function BaseGameState(enterState=()=>{}, duringState=()=>{},exitState=()=>{}, onClick=(event)=>{}){//Base State constructor
         this.enterState = enterState;
         this.duringState = duringState;
@@ -215,9 +219,10 @@
         this.onClick = onClick;
     }
     const gameStateMachine={
-        __proto__: baseStateMachine,
+        //__proto__: baseStateMachine,
         _state: new BaseGameState(),
     };
+    Object.setPrototypeOf(gameStateMachine, baseStateMachine);
     const gameState = {
         clickStart : new BaseGameState(
             function enter(){
